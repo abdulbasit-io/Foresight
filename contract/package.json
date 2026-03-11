@@ -1,0 +1,23 @@
+{
+    "name": "prediction-market-contract",
+    "version": "1.0.0",
+    "description": "PredictionMarket — Binary parimutuel prediction market on Bitcoin L1 via OPNet",
+    "main": "index.js",
+    "scripts": {
+        "build:prediction": "asc src/prediction/index.ts --target prediction --measure --uncheckedBehavior never",
+        "build:testbtc": "asc src/testbtc/index.ts --target testbtc --measure --uncheckedBehavior never",
+        "build": "npm run build:prediction && npm run build:testbtc"
+    },
+    "author": "OPNet",
+    "license": "MIT",
+    "type": "module",
+    "dependencies": {
+        "@assemblyscript/loader": "^0.28.9",
+        "@btc-vision/as-bignum": "^0.1.2",
+        "@btc-vision/assemblyscript": "^0.29.2",
+        "@btc-vision/bitcoin": "^6.5.6",
+        "@btc-vision/btc-runtime": "^1.11.0-rc.9",
+        "@btc-vision/opnet-transform": "^1.2.0",
+        "typescript": "^5.9.3"
+    }
+}

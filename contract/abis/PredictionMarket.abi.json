@@ -1,0 +1,298 @@
+{
+    "functions": [
+        {
+            "name": "createMarket",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "question",
+                    "type": "STRING"
+                },
+                {
+                    "name": "description",
+                    "type": "STRING"
+                },
+                {
+                    "name": "resolver",
+                    "type": "ADDRESS"
+                },
+                {
+                    "name": "paymentToken",
+                    "type": "ADDRESS"
+                },
+                {
+                    "name": "endBlock",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "resolutionDeadlineDelta",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "feeBpsOverride",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "stake",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "side",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "amount",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "success",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "resolve",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "outcome",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "success",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "cancel",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "success",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "claim",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "amount",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "refund",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "amount",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "withdrawFees",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "ADDRESS"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "amount",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getMarket",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "question",
+                    "type": "STRING"
+                },
+                {
+                    "name": "description",
+                    "type": "STRING"
+                },
+                {
+                    "name": "resolver",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "paymentToken",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "endBlock",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "resolutionDeadline",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "yesPool",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "noPool",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "outcome",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "feeBps",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "creator",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "createdAt",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getPosition",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "user",
+                    "type": "ADDRESS"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "yesStake",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "noStake",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "hasClaimed",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getOdds",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "yesPool",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "noPool",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "yesPercent",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getMarketCount",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "count",
+                    "type": "UINT256"
+                }
+            ]
+        }
+    ],
+    "events": []
+}

@@ -1,0 +1,28 @@
+{
+  "name": "prediction-market-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "BTC Prediction Market — Binary parimutuel markets on Bitcoin L1 via OPNet",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@btc-vision/bitcoin": "^6.5.6",
+    "@btc-vision/transaction": "^1.7.31",
+    "buffer": "^6.0.3",
+    "opnet": "^1.7.34",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.0",
+    "stream-browserify": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
+  }
+}
