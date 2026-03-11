@@ -167,19 +167,19 @@ export async function createMarket(senderAddress, {
     ], senderAddress);
 }
 
-export async function approveAndStake(senderAddress, marketId, side, amountSats, tokenAddress) {
-    const approveABI = [{
-        name: 'approve', type: 'function',
-        inputs: [{ name: 'spender', type: 'ADDRESS' }, { name: 'amount', type: 'UINT256' }],
-        outputs: [{ name: 'success', type: 'BOOL' }],
-    }];
+const INCREASE_ALLOWANCE_ABI = [{
+    name: 'increaseAllowance', type: 'function',
+    inputs: [{ name: 'spender', type: 'ADDRESS' }, { name: 'amount', type: 'UINT256' }],
+    outputs: [],
+}];
 
-    // Step 1: approve prediction market to spend tWBTC
+export async function approveToken(senderAddress, tokenAddress, amountSats) {
     const spender = await resolveAddr(CONTRACTS.PREDICTION_MARKET);
-    await execute(tokenAddress, approveABI, 'approve',
+    return execute(tokenAddress, INCREASE_ALLOWANCE_ABI, 'increaseAllowance',
         [spender, BigInt(amountSats)], senderAddress);
+}
 
-    // Step 2: stake
+export async function stakePosition(senderAddress, marketId, side, amountSats) {
     return execute(PM(), PM_ABI, 'stake',
         [BigInt(marketId), side, BigInt(amountSats)], senderAddress);
 }
@@ -207,6 +207,25 @@ export async function withdrawFees(senderAddress, tokenAddress) {
 // ═══════════════════════════════════════════════════════════
 // TestWBTC
 // ═══════════════════════════════════════════════════════════
+
+const BALANCE_OF_ABI = [{
+    name: 'balanceOf',
+    type: 'function',
+    inputs: [{ name: 'account', type: 'ADDRESS' }],
+    outputs: [{ name: 'balance', type: 'UINT256' }],
+}];
+
+export async function getTokenBalance(userAddress) {
+    if (!userAddress || !CONTRACTS.TEST_WBTC) return 0n;
+    try {
+        const addr = await getSender(userAddress);
+        if (!addr) return 0n;
+        const p = await read(CONTRACTS.TEST_WBTC, BALANCE_OF_ABI, 'balanceOf', [addr]);
+        return p?.balance ?? 0n;
+    } catch {
+        return 0n;
+    }
+}
 
 export async function mintFromFaucet(senderAddress) {
     return execute(CONTRACTS.TEST_WBTC, testWBTCABI.functions, 'faucet', [], senderAddress);

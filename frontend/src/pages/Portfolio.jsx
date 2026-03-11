@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
-import { getAllMarkets, getPosition, claimWinnings, refundStake } from '../utils/contractService';
+import { getAllMarkets, getPosition, claimWinnings, refundStake, getTokenBalance, mintFromFaucet } from '../utils/contractService';
 import { formatBtc, outcomeLabel } from '../utils/formatters';
 import { OUTCOME, CONTRACTS } from '../utils/constants';
 
@@ -12,6 +12,9 @@ export default function Portfolio() {
   const [error, setError] = useState('');
   const [actionState, setActionState] = useState({}); // marketId → 'loading' | 'done' | 'error'
   const [txMap, setTxMap] = useState({});
+  const [balance, setBalance] = useState(null);
+  const [faucetState, setFaucetState] = useState('idle');
+  const [faucetError, setFaucetError] = useState('');
 
   useEffect(() => {
     if (!isConnected || !address) return;
@@ -20,6 +23,7 @@ export default function Portfolio() {
       return;
     }
     loadPositions();
+    if (CONTRACTS.TEST_WBTC) getTokenBalance(address).then(setBalance);
   }, [isConnected, address]);
 
   async function loadPositions() {
@@ -84,6 +88,43 @@ export default function Portfolio() {
       <div className="hero-section">
         <h1 className="hero-title">Your <span className="gradient-text">Portfolio</span></h1>
         <p className="hero-sub">Track your open and settled positions</p>
+        {CONTRACTS.TEST_WBTC && (
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            {balance !== null && (
+              <p className="hero-sub" style={{ margin: 0, fontSize: '0.9rem' }}>
+                tWBTC Balance: <strong>{formatBtc(balance)} tWBTC</strong>
+              </p>
+            )}
+            <button
+              className="btn btn-secondary"
+              disabled={faucetState === 'loading'}
+              onClick={async () => {
+                setFaucetState('loading');
+                setFaucetError('');
+                try {
+                  await mintFromFaucet(address);
+                  setFaucetState('done');
+                  setTimeout(() => getTokenBalance(address).then(setBalance), 15000);
+                  setTimeout(() => setFaucetState('idle'), 5000);
+                } catch (e) {
+                  setFaucetError(e.message || 'Unknown error');
+                  setFaucetState('error');
+                  setTimeout(() => setFaucetState('idle'), 6000);
+                }
+              }}
+            >
+              {faucetState === 'loading' ? 'Minting…' :
+               faucetState === 'done'    ? '✓ Got 0.1 tWBTC! (confirming…)' :
+               faucetState === 'error'   ? '✗ Failed — retry?' :
+               'Get tWBTC (faucet)'}
+            </button>
+            {faucetState === 'error' && faucetError && (
+              <p style={{ color: '#ff6b6b', fontSize: '0.8rem', maxWidth: '400px', textAlign: 'center', margin: 0 }}>
+                {faucetError}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {loading && <div className="center-msg">Loading positions from chain...</div>}

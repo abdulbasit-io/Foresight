@@ -36,7 +36,7 @@ export const DEFAULT_RESOLUTION_DELTA = 144; // 1 day after end
 // Contract addresses from .env
 export const CONTRACTS = {
   PREDICTION_MARKET: import.meta.env.VITE_PREDICTION_MARKET_CONTRACT || '',
-  TEST_WBTC: import.meta.env.VITE_TEST_WBTC_CONTRACT || '0xf3cdb04c7c6b159240db901707a609913bb7baeb0573f7d985a9837e4a53516c',
+  TEST_WBTC: import.meta.env.VITE_TEST_WBTC_CONTRACT || '',
 };
 
 export const LINKS = {

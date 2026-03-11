@@ -5,7 +5,8 @@ import {
   getMarket,
   getPosition,
   getOdds,
-  approveAndStake,
+  approveToken,
+  stakePosition,
   resolveMarket,
   cancelMarket,
   claimWinnings,
@@ -70,7 +71,10 @@ export default function MarketDetail() {
       if (sats <= 0n) { setTxError('Amount too small'); return; }
 
       setStakeStep('approving');
-      const txId = await approveAndStake(address, Number(id), stakeSide, sats, CONTRACTS.TEST_WBTC);
+      await approveToken(address, CONTRACTS.TEST_WBTC, sats);
+
+      setStakeStep('staking');
+      const txId = await stakePosition(address, Number(id), stakeSide, sats);
       setTxHash(txId);
       setStakeStep('done');
       setStakeAmount('');
@@ -273,7 +277,7 @@ export default function MarketDetail() {
           {isOpen && isConnected && (
             <div className="action-card">
               <h3>Place a Bet</h3>
-              <p className="action-hint">Approve wBTC, then stake. Two transactions.</p>
+              <p className="action-hint">Two transactions: allow tWBTC spend, then stake.</p>
 
               <div className="side-selector">
                 <button

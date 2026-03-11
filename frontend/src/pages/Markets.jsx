@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
-import { getAllMarkets, mintFromFaucet } from '../utils/contractService';
+import { getAllMarkets, mintFromFaucet, getTokenBalance } from '../utils/contractService';
 import { formatBtc, blocksToApproxTime, outcomeLabel } from '../utils/formatters';
 import { OUTCOME, STATUS_CONFIG, CONTRACTS } from '../utils/constants';
 
@@ -14,6 +14,8 @@ export default function Markets() {
   const [filter, setFilter] = useState('All');
   const [error, setError] = useState('');
   const [faucetState, setFaucetState] = useState('idle'); // idle | loading | done | error
+  const [faucetError, setFaucetError] = useState('');
+  const [balance, setBalance] = useState(null); // null = not loaded yet
 
   async function load() {
     if (!CONTRACTS.PREDICTION_MARKET) {
@@ -35,17 +37,27 @@ export default function Markets() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (isConnected && address && CONTRACTS.TEST_WBTC) {
+      getTokenBalance(address).then(setBalance);
+    }
+  }, [isConnected, address]);
+
   async function handleFaucet() {
     if (!isConnected) return;
     setFaucetState('loading');
+    setFaucetError('');
     try {
       await mintFromFaucet(address);
       setFaucetState('done');
-      setTimeout(() => setFaucetState('idle'), 4000);
+      // Refresh balance after faucet (~15s for block confirmation)
+      setTimeout(() => getTokenBalance(address).then(setBalance), 15000);
+      setTimeout(() => setFaucetState('idle'), 5000);
     } catch (e) {
       console.warn('Faucet failed:', e.message);
+      setFaucetError(e.message || 'Unknown error');
       setFaucetState('error');
-      setTimeout(() => setFaucetState('idle'), 4000);
+      setTimeout(() => setFaucetState('idle'), 6000);
     }
   }
 
@@ -64,17 +76,34 @@ export default function Markets() {
         <h1 className="hero-title">Prediction <span className="gradient-text">Markets</span></h1>
         <p className="hero-sub">Bet on real-world outcomes with tWBTC — settled on Bitcoin L1</p>
         {isConnected && CONTRACTS.TEST_WBTC && (
-          <button
-            className="btn btn-secondary"
-            style={{ marginTop: '1rem' }}
-            onClick={handleFaucet}
-            disabled={faucetState === 'loading'}
-          >
-            {faucetState === 'loading' ? 'Minting…' :
-             faucetState === 'done'    ? '✓ Got 0.1 tWBTC!' :
-             faucetState === 'error'   ? '✗ Faucet failed' :
-             '🪙 Get tWBTC (faucet)'}
-          </button>
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            {balance !== null && (
+              <p className="hero-sub" style={{ margin: 0, fontSize: '0.9rem' }}>
+                Balance: <strong>{formatBtc(balance)} tWBTC</strong>
+              </p>
+            )}
+            <button
+              className="btn btn-secondary"
+              onClick={handleFaucet}
+              disabled={faucetState === 'loading'}
+            >
+              {faucetState === 'loading' ? 'Minting…' :
+               faucetState === 'done'    ? '✓ Got 0.1 tWBTC! (confirming…)' :
+               faucetState === 'error'   ? '✗ Faucet failed — retry?' :
+               'Get tWBTC (faucet)'}
+            </button>
+            {faucetState === 'error' && faucetError && (
+              <p style={{ color: '#ff6b6b', fontSize: '0.8rem', maxWidth: '400px', textAlign: 'center', margin: 0 }}>
+                {faucetError}
+              </p>
+            )}
+            {faucetState === 'done' && (
+              <p style={{ color: '#aaa', fontSize: '0.78rem', maxWidth: '420px', textAlign: 'center', margin: 0 }}>
+                Token not showing in OPWallet? Add it manually using the contract address:<br />
+                <code style={{ fontSize: '0.7rem', wordBreak: 'break-all' }}>{CONTRACTS.TEST_WBTC}</code>
+              </p>
+            )}
+          </div>
         )}
       </div>
 
