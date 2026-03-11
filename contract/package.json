@@ -4,8 +4,8 @@
     "description": "PredictionMarket — Binary parimutuel prediction market on Bitcoin L1 via OPNet",
     "main": "index.js",
     "scripts": {
-        "build:prediction": "asc src/prediction/index.ts --target prediction --measure --uncheckedBehavior never",
-        "build:testbtc": "asc src/testbtc/index.ts --target testbtc --measure --uncheckedBehavior never",
+        "build:prediction": "asc src/prediction/index.ts --target prediction --measure --uncheckedBehavior never && sed -i 's/\"type\": \"Function\"/\"type\": \"function\"/g; s/\"type\": \"View\"/\"type\": \"function\"/g' abis/PredictionMarket.abi.json",
+        "build:testbtc": "asc src/testbtc/index.ts --target testbtc --measure --uncheckedBehavior never && sed -i 's/\"type\": \"Function\"/\"type\": \"function\"/g; s/\"type\": \"View\"/\"type\": \"function\"/g' abis/TestWBTC.abi.json",
         "build": "npm run build:prediction && npm run build:testbtc"
     },
     "author": "OPNet",
