@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllMarkets } from '../utils/contractService';
+import { useWallet } from '../context/WalletContext';
+import { getAllMarkets, mintFromFaucet } from '../utils/contractService';
 import { formatBtc, blocksToApproxTime, outcomeLabel } from '../utils/formatters';
 import { OUTCOME, STATUS_CONFIG, CONTRACTS } from '../utils/constants';
 
 const FILTER_OPTIONS = ['All', 'Open', 'Resolved', 'Cancelled'];
 
 export default function Markets() {
+  const { isConnected, address } = useWallet();
   const [markets, setMarkets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [error, setError] = useState('');
+  const [faucetState, setFaucetState] = useState('idle'); // idle | loading | done | error
 
   async function load() {
     if (!CONTRACTS.PREDICTION_MARKET) {
@@ -32,6 +35,20 @@ export default function Markets() {
 
   useEffect(() => { load(); }, []);
 
+  async function handleFaucet() {
+    if (!isConnected) return;
+    setFaucetState('loading');
+    try {
+      await mintFromFaucet(address);
+      setFaucetState('done');
+      setTimeout(() => setFaucetState('idle'), 4000);
+    } catch (e) {
+      console.warn('Faucet failed:', e.message);
+      setFaucetState('error');
+      setTimeout(() => setFaucetState('idle'), 4000);
+    }
+  }
+
   const filtered = markets.filter(m => {
     if (filter === 'All') return true;
     if (filter === 'Open') return m.outcome === OUTCOME.OPEN;
@@ -45,7 +62,20 @@ export default function Markets() {
       {/* Hero */}
       <div className="hero-section">
         <h1 className="hero-title">Prediction <span className="gradient-text">Markets</span></h1>
-        <p className="hero-sub">Bet on real-world outcomes with wBTC — settled on Bitcoin L1</p>
+        <p className="hero-sub">Bet on real-world outcomes with tWBTC — settled on Bitcoin L1</p>
+        {isConnected && CONTRACTS.TEST_WBTC && (
+          <button
+            className="btn btn-secondary"
+            style={{ marginTop: '1rem' }}
+            onClick={handleFaucet}
+            disabled={faucetState === 'loading'}
+          >
+            {faucetState === 'loading' ? 'Minting…' :
+             faucetState === 'done'    ? '✓ Got 0.1 tWBTC!' :
+             faucetState === 'error'   ? '✗ Faucet failed' :
+             '🪙 Get tWBTC (faucet)'}
+          </button>
+        )}
       </div>
 
       {/* Filters */}
