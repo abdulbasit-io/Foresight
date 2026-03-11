@@ -173,10 +173,34 @@ const INCREASE_ALLOWANCE_ABI = [{
     outputs: [],
 }];
 
-export async function approveToken(senderAddress, tokenAddress, amountSats) {
+const ALLOWANCE_ABI = [{
+    name: 'allowance', type: 'function',
+    inputs: [{ name: 'owner', type: 'ADDRESS' }, { name: 'spender', type: 'ADDRESS' }],
+    outputs: [{ name: 'remaining', type: 'UINT256' }],
+}];
+
+// Returns current approved allowance for the PM to spend on behalf of userAddress
+export async function getAllowance(userAddress) {
+    if (!userAddress || !CONTRACTS.TEST_WBTC || !CONTRACTS.PREDICTION_MARKET) return 0n;
+    try {
+        const [owner, spender] = await Promise.all([
+            getSender(userAddress),
+            resolveAddr(CONTRACTS.PREDICTION_MARKET),
+        ]);
+        if (!owner || !spender) return 0n;
+        const p = await read(CONTRACTS.TEST_WBTC, ALLOWANCE_ABI, 'allowance', [owner, spender]);
+        return p?.remaining ?? 0n;
+    } catch {
+        return 0n;
+    }
+}
+
+// Approves u256.Max so this only ever needs to be done once per wallet
+export async function approveToken(senderAddress, tokenAddress) {
     const spender = await resolveAddr(CONTRACTS.PREDICTION_MARKET);
+    const MAX_U256 = 2n ** 256n - 1n;
     return execute(tokenAddress, INCREASE_ALLOWANCE_ABI, 'increaseAllowance',
-        [spender, BigInt(amountSats)], senderAddress);
+        [spender, MAX_U256], senderAddress);
 }
 
 export async function stakePosition(senderAddress, marketId, side, amountSats) {

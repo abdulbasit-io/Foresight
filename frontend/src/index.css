@@ -931,6 +931,57 @@ input, textarea, select { font-family: inherit; }
 }
 .tx-hash { font-family: var(--font-mono); font-size: 0.6875rem; }
 
+/* ── Approval Pending Card ───────────────────────────────── */
+.approval-pending-card {
+  padding: 0.875rem;
+  background: rgba(255, 200, 80, 0.06);
+  border: 1px solid rgba(255, 200, 80, 0.2);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.approval-pending-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #ffc850;
+}
+.approval-pending-sub {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+.approval-pending-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid rgba(255,200,80,0.1);
+  padding-top: 0.4rem;
+  margin-top: 0.1rem;
+}
+.approval-check-count { color: #ffc850; font-weight: 600; }
+.approval-next-check { color: var(--color-text-muted); }
+
+/* Spinner for pending approval */
+.approval-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,200,80,0.25);
+  border-top-color: #ffc850;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Create Form ─────────────────────────────────────────── */
 .form-page {
   max-width: 580px;

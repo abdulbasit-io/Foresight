@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import {
   getMarket,
   getPosition,
   getOdds,
+  getAllowance,
   approveToken,
   stakePosition,
   resolveMarket,
@@ -28,7 +29,13 @@ export default function MarketDetail() {
   // Stake UI
   const [stakeAmount, setStakeAmount] = useState('');
   const [stakeSide, setStakeSide] = useState(null); // SIDE_YES or SIDE_NO
-  const [stakeStep, setStakeStep] = useState('idle'); // idle | approving | staking | done
+  const [stakeStep, setStakeStep] = useState('idle'); // idle | approving | pending | staking | done
+  const [allowance, setAllowance] = useState(null); // null = not checked yet
+  const [approvalChecks, setApprovalChecks] = useState(0);
+  const [nextCheckIn, setNextCheckIn] = useState(null); // seconds until next poll
+
+  const pollRef = useRef(null);
+  const countdownRef = useRef(null);
 
   // Resolve UI
   const [resolveOutcome, setResolveOutcome] = useState(null);
@@ -38,6 +45,57 @@ export default function MarketDetail() {
   const [cancelling, setCancelling] = useState(false);
   const [txHash, setTxHash] = useState('');
   const [txError, setTxError] = useState('');
+
+  // Stop polling helpers
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    setNextCheckIn(null);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => () => stopPolling(), [stopPolling]);
+
+  // Poll allowance until it confirms on-chain
+  const startPolling = useCallback((addr) => {
+    stopPolling();
+    const POLL_SECS = 30;
+    setNextCheckIn(POLL_SECS);
+
+    // Countdown every second
+    countdownRef.current = setInterval(() => {
+      setNextCheckIn(n => (n != null && n > 1 ? n - 1 : POLL_SECS));
+    }, 1000);
+
+    // Check allowance every 30 s
+    pollRef.current = setInterval(async () => {
+      setNextCheckIn(POLL_SECS);
+      setApprovalChecks(c => c + 1);
+      const current = await getAllowance(addr);
+      if (current > 0n) {
+        setAllowance(current);
+        setStakeStep('idle');
+        stopPolling();
+      }
+    }, POLL_SECS * 1000);
+  }, [stopPolling]);
+
+  // Manual "Check now" trigger
+  const checkNow = useCallback(async () => {
+    if (!address) return;
+    setApprovalChecks(c => c + 1);
+    const current = await getAllowance(address);
+    if (current > 0n) {
+      setAllowance(current);
+      setStakeStep('idle');
+      stopPolling();
+    }
+  }, [address, stopPolling]);
+
+  // Check allowance whenever wallet connects
+  useEffect(() => {
+    if (isConnected && address) getAllowance(address).then(setAllowance);
+  }, [isConnected, address]);
 
   const load = useCallback(async () => {
     if (!CONTRACTS.PREDICTION_MARKET) {
@@ -62,22 +120,35 @@ export default function MarketDetail() {
 
   useEffect(() => { load(); }, [load]);
 
+  const handleApprove = async () => {
+    setTxError('');
+    setStakeStep('approving');
+    try {
+      await approveToken(address, CONTRACTS.TEST_WBTC);
+      setApprovalChecks(0);
+      setStakeStep('pending');
+      startPolling(address);
+    } catch (e) {
+      setTxError(e.message);
+      setStakeStep('idle');
+    }
+  };
+
   const handleStake = async () => {
     if (!stakeAmount || !stakeSide || !isConnected) return;
     setTxError('');
     setTxHash('');
+    setStakeStep('staking');
     try {
       const sats = btcToSats(parseFloat(stakeAmount));
-      if (sats <= 0n) { setTxError('Amount too small'); return; }
+      if (sats <= 0n) { setTxError('Amount too small'); setStakeStep('idle'); return; }
 
-      setStakeStep('approving');
-      await approveToken(address, CONTRACTS.TEST_WBTC, sats);
-
-      setStakeStep('staking');
       const txId = await stakePosition(address, Number(id), stakeSide, sats);
       setTxHash(txId);
       setStakeStep('done');
       setStakeAmount('');
+      stopPolling();
+      setAllowance(null); // will re-check on next load
       await load();
     } catch (e) {
       setTxError(e.message);
@@ -277,21 +348,16 @@ export default function MarketDetail() {
           {isOpen && isConnected && (
             <div className="action-card">
               <h3>Place a Bet</h3>
-              <p className="action-hint">Two transactions: allow tWBTC spend, then stake.</p>
 
               <div className="side-selector">
                 <button
                   className={`side-btn yes-btn ${stakeSide === SIDE_YES ? 'active' : ''}`}
                   onClick={() => setStakeSide(SIDE_YES)}
-                >
-                  YES {yesP}%
-                </button>
+                >YES {yesP}%</button>
                 <button
                   className={`side-btn no-btn ${stakeSide === SIDE_NO ? 'active' : ''}`}
                   onClick={() => setStakeSide(SIDE_NO)}
-                >
-                  NO {100 - yesP}%
-                </button>
+                >NO {100 - yesP}%</button>
               </div>
 
               <div className="input-row">
@@ -304,35 +370,82 @@ export default function MarketDetail() {
                   value={stakeAmount}
                   onChange={e => setStakeAmount(e.target.value)}
                 />
-                <span className="input-unit">wBTC</span>
+                <span className="input-unit">tWBTC</span>
               </div>
 
               {payout && stakeSide && (
                 <div className="payout-estimate">
-                  Estimated payout: <strong>{payout.btc.toFixed(6)} wBTC</strong>
+                  Est. payout: <strong>{payout.btc.toFixed(6)} tWBTC</strong>
                   {' '}({((payout.btc / parseFloat(stakeAmount) - 1) * 100).toFixed(1)}% return)
                 </div>
               )}
 
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%' }}
-                disabled={!stakeSide || !stakeAmount || stakeStep !== 'idle'}
-                onClick={handleStake}
-              >
-                {stakeStep === 'approving' ? 'Step 1: Approving wBTC...' :
-                 stakeStep === 'staking' ? 'Step 2: Staking...' :
-                 stakeStep === 'done' ? 'Staked!' :
-                 stakeSide === SIDE_YES ? 'Bet YES' :
-                 stakeSide === SIDE_NO ? 'Bet NO' :
-                 'Select a side'}
-              </button>
-
-              {stakeStep === 'done' && (
-                <button className="btn btn-secondary" style={{ width: '100%', marginTop: '0.5rem' }}
-                  onClick={() => setStakeStep('idle')}>
-                  Bet Again
+              {/* Approval flow */}
+              {allowance === 0n && stakeStep !== 'pending' && (
+                <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%', marginBottom: '0.75rem' }}
+                  disabled={stakeStep === 'approving'}
+                  onClick={handleApprove}
+                >
+                  {stakeStep === 'approving' ? 'Waiting for wallet...' : 'Step 1: Approve tWBTC (one-time)'}
                 </button>
+              )}
+
+              {/* Pending confirmation panel */}
+              {stakeStep === 'pending' && (
+                <div className="approval-pending-card" style={{ marginBottom: '0.75rem' }}>
+                  <div className="approval-pending-header">
+                    <span className="approval-spinner" />
+                    <strong>Approval sent — waiting for Bitcoin confirmation</strong>
+                  </div>
+                  <p className="approval-pending-sub">
+                    Bitcoin blocks confirm every ~10 minutes. This page checks automatically every 30 seconds and will unlock betting the moment it confirms.
+                  </p>
+                  <div className="approval-pending-status">
+                    <span className="approval-check-count">
+                      {approvalChecks === 0
+                        ? 'First check in 30s...'
+                        : `Checked ${approvalChecks} time${approvalChecks > 1 ? 's' : ''}`}
+                    </span>
+                    {nextCheckIn != null && (
+                      <span className="approval-next-check">
+                        Next check in {nextCheckIn}s
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.85rem' }}
+                    onClick={checkNow}
+                  >
+                    Check now
+                  </button>
+                </div>
+              )}
+
+              {/* Stake button — shown once allowance is confirmed */}
+              {(allowance == null || allowance > 0n) && stakeStep !== 'pending' && (
+                <>
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: '100%' }}
+                    disabled={!stakeSide || !stakeAmount || stakeStep === 'staking' || stakeStep === 'done'}
+                    onClick={handleStake}
+                  >
+                    {stakeStep === 'staking' ? 'Staking...' :
+                     stakeStep === 'done'    ? '✓ Staked!' :
+                     stakeSide === SIDE_YES  ? 'Bet YES' :
+                     stakeSide === SIDE_NO   ? 'Bet NO' :
+                     'Select a side'}
+                  </button>
+                  {stakeStep === 'done' && (
+                    <button className="btn btn-secondary" style={{ width: '100%', marginTop: '0.5rem' }}
+                      onClick={() => { setStakeStep('idle'); setStakeAmount(''); }}>
+                      Bet Again
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}
