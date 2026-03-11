@@ -25,7 +25,7 @@ export default function Create() {
 
   // Load current block for reference
   useEffect(() => {
-    getBlockNumber().then(b => setCurrentBlock(b));
+    getBlockNumber().then(b => setCurrentBlock(b != null ? Number(b) : null));
   }, []);
 
   function set(field, value) {
@@ -61,7 +61,6 @@ export default function Create() {
         feeBpsOverride: parseInt(form.feeBpsOverride) || 0,
       });
       setTxHash(txId);
-      setTimeout(() => navigate('/markets'), 3000);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -121,35 +120,31 @@ export default function Create() {
 
           {/* Resolver */}
           <div className="form-group">
-            <label className="form-label">Resolver Address *</label>
+            <label className="form-label">Resolver (MLDSA public key) *</label>
             <input
               className="form-input"
               type="text"
-              placeholder="opt1..."
+              placeholder="0x..."
               value={form.resolver}
               onChange={e => set('resolver', e.target.value)}
               required
             />
             <span className="form-hint">
-              Address that calls resolve() after the end block.{' '}
-              <button type="button" className="link-btn" onClick={() => set('resolver', address)}>
-                Use my address
-              </button>
+              Enter your MLDSA public key hash (0x...) — this is the only address allowed to resolve this market.
             </span>
           </div>
 
-          {/* Payment Token */}
+          {/* Payment Token — locked to TestWBTC */}
           <div className="form-group">
-            <label className="form-label">Payment Token (OP20 address) *</label>
+            <label className="form-label">Payment Token</label>
             <input
               className="form-input"
               type="text"
-              placeholder="opt1... (wBTC contract address)"
               value={form.paymentToken}
-              onChange={e => set('paymentToken', e.target.value)}
-              required
+              readOnly
+              style={{ opacity: 0.5, cursor: 'not-allowed', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}
             />
-            <span className="form-hint">Default: wBTC testnet address from .env</span>
+            <span className="form-hint">TestWBTC — the only supported token on testnet</span>
           </div>
 
           {/* Duration */}
@@ -199,18 +194,19 @@ export default function Create() {
           {error && <div className="tx-error">{error}</div>}
           {txHash && (
             <div className="tx-success">
-              Market created! Tx: {txHash.slice(0, 20)}...
-              <br />Redirecting to markets...
+              Market created! Tx: {txHash.slice(0, 20)}...<br />
+              Bitcoin blocks take ~10 min — your market will appear on the Markets page in <strong>~15 minutes</strong> once the transaction is confirmed and indexed.
             </div>
           )}
 
           <button
-            type="submit"
+            type={txHash ? 'button' : 'submit'}
             className="btn btn-primary"
             style={{ width: '100%', padding: '0.875rem' }}
             disabled={submitting}
+            onClick={txHash ? () => navigate('/markets') : undefined}
           >
-            {submitting ? 'Creating Market...' : 'Create Market'}
+            {submitting ? 'Creating Market...' : txHash ? 'Go to Markets' : 'Create Market'}
           </button>
         </form>
       </div>

@@ -10,10 +10,10 @@ export const WBTC_DECIMALS = 8;
 
 // Market outcome values (match contract constants)
 export const OUTCOME = {
-  OPEN: 0n,
-  YES: 1n,
-  NO: 2n,
-  CANCELLED: 3n,
+  OPEN: 0,
+  YES: 1,
+  NO: 2,
+  CANCELLED: 3,
 };
 
 export const OUTCOME_LABEL = {
@@ -36,7 +36,7 @@ export const DEFAULT_RESOLUTION_DELTA = 144; // 1 day after end
 // Contract addresses from .env
 export const CONTRACTS = {
   PREDICTION_MARKET: import.meta.env.VITE_PREDICTION_MARKET_CONTRACT || '',
-  TEST_WBTC: import.meta.env.VITE_TEST_WBTC_CONTRACT || '',
+  TEST_WBTC: import.meta.env.VITE_TEST_WBTC_CONTRACT || '0xf3cdb04c7c6b159240db901707a609913bb7baeb0573f7d985a9837e4a53516c',
 };
 
 export const LINKS = {

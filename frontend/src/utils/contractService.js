@@ -12,6 +12,26 @@ import testWBTCABI from '../../../contract/abis/TestWBTC.abi.json';
 
 const NETWORK = networks.testnet;
 
+// Resolve any address (opt1..., bc1q..., or 0x hex public key) → Address object.
+// The SDK only accepts Address objects for ADDRESS-typed ABI params.
+async function resolveAddr(addressString) {
+    if (!addressString) throw new Error('Empty address');
+    // Already a hex public key — parse directly
+    if (addressString.startsWith('0x')) {
+        return Address.fromString(addressString);
+    }
+    // Look up the public key on-chain via RPC
+    const prov = getProvider();
+    try {
+        const info = await prov.getPublicKeyInfo(addressString, false);
+        if (info) return info;
+    } catch {}
+    throw new Error(
+        `Public key not found for ${addressString}.\n` +
+        `If this address has no on-chain history yet, provide its hex public key (0x02...) instead.`
+    );
+}
+
 // ── Resolve sender public key from OPWallet ───────────────
 async function getSender(address) {
     const prov = getProvider();
@@ -105,7 +125,11 @@ export async function getAllMarkets() {
 }
 
 export async function getPosition(marketId, userAddress) {
-    const p = await read(PM(), PM_ABI, 'getPosition', [BigInt(marketId), userAddress]);
+    // getPosition needs the same Address representation the contract stored when staking.
+    // getSender resolves via RPC first, then falls back to OPWallet's MLDSA key.
+    const userAddr = await getSender(userAddress);
+    if (!userAddr) return null;
+    const p = await read(PM(), PM_ABI, 'getPosition', [BigInt(marketId), userAddr]);
     if (!p) return null;
     return {
         yesStake:  p.yesStake ?? 0n,
@@ -128,11 +152,15 @@ export async function createMarket(senderAddress, {
     question, description, resolver, paymentToken,
     endBlock, resolutionDeadlineDelta, feeBpsOverride = 0,
 }) {
+    const [resolverAddr, tokenAddr] = await Promise.all([
+        resolveAddr(resolver),
+        resolveAddr(paymentToken),
+    ]);
     return execute(PM(), PM_ABI, 'createMarket', [
         question,
         description,
-        resolver,        // address string — SDK encodes directly
-        paymentToken,    // address string — SDK encodes directly
+        resolverAddr,
+        tokenAddr,
         BigInt(endBlock),
         BigInt(resolutionDeadlineDelta),
         BigInt(feeBpsOverride),
@@ -141,14 +169,15 @@ export async function createMarket(senderAddress, {
 
 export async function approveAndStake(senderAddress, marketId, side, amountSats, tokenAddress) {
     const approveABI = [{
-        name: 'approve', type: 'Function',
+        name: 'approve', type: 'function',
         inputs: [{ name: 'spender', type: 'ADDRESS' }, { name: 'amount', type: 'UINT256' }],
         outputs: [{ name: 'success', type: 'BOOL' }],
     }];
 
     // Step 1: approve prediction market to spend tWBTC
+    const spender = await resolveAddr(CONTRACTS.PREDICTION_MARKET);
     await execute(tokenAddress, approveABI, 'approve',
-        [CONTRACTS.PREDICTION_MARKET, BigInt(amountSats)], senderAddress);
+        [spender, BigInt(amountSats)], senderAddress);
 
     // Step 2: stake
     return execute(PM(), PM_ABI, 'stake',
@@ -172,7 +201,7 @@ export async function refundStake(senderAddress, marketId) {
 }
 
 export async function withdrawFees(senderAddress, tokenAddress) {
-    return execute(PM(), PM_ABI, 'withdrawFees', [tokenAddress], senderAddress);
+    return execute(PM(), PM_ABI, 'withdrawFees', [await resolveAddr(tokenAddress)], senderAddress);
 }
 
 // ═══════════════════════════════════════════════════════════

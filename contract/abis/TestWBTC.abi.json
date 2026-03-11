@@ -2,7 +2,7 @@
     "functions": [
         {
             "name": "faucet",
-            "type": "Function",
+            "type": "function",
             "payable": false,
             "onlyOwner": false,
             "inputs": [],

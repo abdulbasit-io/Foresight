@@ -12,24 +12,25 @@ export default function Markets() {
   const [filter, setFilter] = useState('All');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      if (!CONTRACTS.PREDICTION_MARKET) {
-        setError('Contract address not configured. Add VITE_PREDICTION_MARKET_CONTRACT to .env');
-        setLoading(false);
-        return;
-      }
-      try {
-        const all = await getAllMarkets();
-        setMarkets(all);
-      } catch (e) {
-        setError('Failed to load markets: ' + e.message);
-      } finally {
-        setLoading(false);
-      }
+  async function load() {
+    if (!CONTRACTS.PREDICTION_MARKET) {
+      setError('Contract address not configured. Add VITE_PREDICTION_MARKET_CONTRACT to .env');
+      setLoading(false);
+      return;
     }
-    load();
-  }, []);
+    setLoading(true);
+    setError('');
+    try {
+      const all = await getAllMarkets();
+      setMarkets(all);
+    } catch (e) {
+      setError('Failed to load markets: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
 
   const filtered = markets.filter(m => {
     if (filter === 'All') return true;
@@ -59,6 +60,9 @@ export default function Markets() {
           </button>
         ))}
         <span className="filter-count">{filtered.length} markets</span>
+        <button className="filter-btn" onClick={load} disabled={loading}>
+          {loading ? '...' : 'Refresh'}
+        </button>
       </div>
 
       {/* Content */}
@@ -113,7 +117,7 @@ function MarketCard({ market }) {
         </div>
       </div>
 
-      {market.outcome === Number(0n) && (
+      {market.outcome === OUTCOME.OPEN && (
         <div className="market-footer">
           <span className="time-remaining">
             Ends in {blocksToApproxTime(Number(market.endBlock))}
