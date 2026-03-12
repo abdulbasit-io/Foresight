@@ -4,12 +4,14 @@ import { useWallet } from '../context/WalletContext';
 import { getAllMarkets, mintFromFaucet, getTokenBalance } from '../utils/contractService';
 import { formatBtc, blocksToApproxTime, outcomeLabel } from '../utils/formatters';
 import { OUTCOME, STATUS_CONFIG, CONTRACTS } from '../utils/constants';
+import { getBlockNumber } from '../utils/opnetProvider';
 
 const FILTER_OPTIONS = ['All', 'Open', 'Resolved', 'Cancelled'];
 
 export default function Markets() {
   const { isConnected, address } = useWallet();
   const [markets, setMarkets] = useState([]);
+  const [currentBlock, setCurrentBlock] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [error, setError] = useState('');
@@ -26,8 +28,9 @@ export default function Markets() {
     setLoading(true);
     setError('');
     try {
-      const all = await getAllMarkets();
+      const [all, blk] = await Promise.all([getAllMarkets(), getBlockNumber()]);
       setMarkets(all);
+      if (blk != null) setCurrentBlock(Number(blk));
     } catch (e) {
       setError('Failed to load markets: ' + e.message);
     } finally {
@@ -136,14 +139,14 @@ export default function Markets() {
 
       <div className="markets-grid">
         {filtered.map(market => (
-          <MarketCard key={market.id} market={market} />
+          <MarketCard key={market.id} market={market} currentBlock={currentBlock} />
         ))}
       </div>
     </div>
   );
 }
 
-function MarketCard({ market }) {
+function MarketCard({ market, currentBlock }) {
   const label = outcomeLabel(market.outcome);
   const status = STATUS_CONFIG[label] || STATUS_CONFIG['OPEN'];
   const yesPool = Number(market.yesPool || 0n);
@@ -176,10 +179,10 @@ function MarketCard({ market }) {
         </div>
       </div>
 
-      {market.outcome === OUTCOME.OPEN && (
+      {market.outcome === OUTCOME.OPEN && currentBlock != null && (
         <div className="market-footer">
           <span className="time-remaining">
-            Ends in {blocksToApproxTime(Number(market.endBlock))}
+            Ends in {blocksToApproxTime(Number(market.endBlock) - currentBlock)}
           </span>
         </div>
       )}
