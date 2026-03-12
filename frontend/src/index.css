@@ -507,6 +507,73 @@ input, textarea, select { font-family: inherit; }
   animation: fadeInUp 0.5s ease backwards;
 }
 .stat-highlight:nth-child(1) { animation-delay: 0.15s; }
+
+/* ── Token support row ───────────────────────────────── */
+.token-support-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem 0;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  animation: fadeInUp 0.5s ease 0.2s backwards;
+}
+.token-support-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.token-chips {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.token-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 99px;
+  border: 1px solid;
+}
+.token-chip-live {
+  background: rgba(129, 255, 211, 0.06);
+  border-color: rgba(129, 255, 211, 0.25);
+}
+.token-chip-soon {
+  background: rgba(148, 163, 184, 0.05);
+  border-color: rgba(148, 163, 184, 0.15);
+}
+.token-chip-symbol {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+}
+.token-chip-soon .token-chip-symbol {
+  color: var(--color-text-muted);
+}
+.token-chip-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+}
+.token-chip-status.live {
+  background: rgba(129, 255, 211, 0.15);
+  color: #81FFD3;
+}
+.token-chip-status.soon {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}
 .stat-highlight:nth-child(2) { animation-delay: 0.25s; }
 .stat-highlight:nth-child(3) { animation-delay: 0.35s; }
 

@@ -166,7 +166,7 @@ export default function Portfolio() {
                   await mintFromFaucet(address);
                   setFaucetState('done');
                   setTimeout(() => getTokenBalance(address).then(setBalance), 15000);
-                  setTimeout(() => setFaucetState('idle'), 5000);
+                  setTimeout(() => setFaucetState('idle'), 15000);
                 } catch (e) {
                   setFaucetError(e.message || 'Unknown error');
                   setFaucetState('error');

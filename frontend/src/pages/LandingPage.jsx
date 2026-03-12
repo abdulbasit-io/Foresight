@@ -39,6 +39,25 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* ── Supported Tokens ──────────────────────────────── */}
+      <div className="token-support-row">
+        <span className="token-support-label">Bet with</span>
+        <div className="token-chips">
+          <div className="token-chip token-chip-live">
+            <span className="token-chip-symbol">tWBTC</span>
+            <span className="token-chip-status live">Live</span>
+          </div>
+          <div className="token-chip token-chip-soon">
+            <span className="token-chip-symbol">$PILL</span>
+            <span className="token-chip-status soon">Soon</span>
+          </div>
+          <div className="token-chip token-chip-soon">
+            <span className="token-chip-symbol">$MOTO</span>
+            <span className="token-chip-status soon">Soon</span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Features ──────────────────────────────────────── */}
       <section className="landing-section">
         <div className="section-header">

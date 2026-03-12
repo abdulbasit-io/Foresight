@@ -55,7 +55,7 @@ export default function Markets() {
       setFaucetState('done');
       // Refresh balance after faucet (~15s for block confirmation)
       setTimeout(() => getTokenBalance(address).then(setBalance), 15000);
-      setTimeout(() => setFaucetState('idle'), 5000);
+      setTimeout(() => setFaucetState('idle'), 15000);
     } catch (e) {
       console.warn('Faucet failed:', e.message);
       setFaucetError(e.message || 'Unknown error');
