@@ -8,11 +8,16 @@ Built on [OPNet](https://opnet.org) using AssemblyScript smart contracts running
 
 ## Quick Start
 
-1. Install [OPWallet](https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb) and get tBTC from the [OPNet faucet](https://faucet.opnet.org)
-2. Hit the **Get tWBTC** button on the Markets page to fund your balance
-3. Browse open markets, pick a side, approve once, then bet
+1. Install [OPWallet](https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb)
+2. Get **tBTC** (gas) from the [OPNet faucet](https://faucet.opnet.org) — you need this to pay for transactions
+3. Connect your wallet on the Markets page
+4. Click **"Mint free tWBTC"** — this gives you 0.1 tWBTC, the token used for betting
+5. Wait ~10 minutes for the Bitcoin block to confirm, then your balance appears
+6. Open any market, approve tWBTC once, and bet
 
-That's it. No accounts, no KYC, no wrapping.
+> **tWBTC is required to place bets.** It's a free testnet token — mint as much as you need from the faucet on the Markets page. Without it, all bet transactions will fail.
+
+No accounts, no KYC, no wrapping.
 
 ---
 

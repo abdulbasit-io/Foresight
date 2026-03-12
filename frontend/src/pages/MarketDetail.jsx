@@ -440,6 +440,19 @@ export default function MarketDetail() {
         {/* ── Right: Action Panel ───────────────────────── */}
         <div className="detail-sidebar">
 
+          {/* Token requirement notice */}
+          {isOpen && (
+            <div className="token-required-strip">
+              <span className="token-required-icon">ℹ</span>
+              <span>
+                Betting requires <strong>tWBTC</strong> — the testnet token.{' '}
+                {isConnected
+                  ? <>Go to <Link to="/markets" className="link">Markets</Link> to mint free tWBTC from the faucet, then come back to bet.</>
+                  : <>Connect OPWallet, then mint free tWBTC from the faucet on the Markets page.</>}
+              </span>
+            </div>
+          )}
+
           {/* Bet panel */}
           {isOpen && isConnected && (
             <div className="action-card">

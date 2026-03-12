@@ -79,34 +79,54 @@ export default function Markets() {
         <h1 className="hero-title">Prediction <span className="gradient-text">Markets</span></h1>
         <p className="hero-sub">Bet on real-world outcomes with tWBTC — settled on Bitcoin L1</p>
         {isConnected && CONTRACTS.TEST_WBTC && (
-          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-            {balance !== null && (
-              <p className="hero-sub" style={{ margin: 0, fontSize: '0.9rem' }}>
-                Balance: <strong>{formatBtc(balance)} tWBTC</strong>
-              </p>
+          <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', width: '100%', maxWidth: 480 }}>
+            {/* Balance line */}
+            <p className="hero-sub" style={{ margin: 0, fontSize: '0.9rem' }}>
+              {balance === null
+                ? 'Loading balance…'
+                : <>tWBTC Balance: <strong>{formatBtc(balance)}</strong></>}
+            </p>
+
+            {/* Zero-balance callout */}
+            {balance !== null && balance === 0n && faucetState === 'idle' && (
+              <div className="faucet-callout">
+                <strong>You need tWBTC to place a bet.</strong>
+                <br />
+                This is testnet — hit the button below to mint 0.1 tWBTC for free. Takes ~10 min to confirm on Bitcoin.
+              </div>
             )}
+
             <button
-              className="btn btn-secondary"
+              className={`btn ${balance === 0n ? 'btn-primary' : 'btn-secondary'}`}
               onClick={handleFaucet}
               disabled={faucetState === 'loading'}
             >
-              {faucetState === 'loading' ? 'Minting…' :
-               faucetState === 'done'    ? '✓ Got 0.1 tWBTC! (confirming…)' :
-               faucetState === 'error'   ? '✗ Faucet failed — retry?' :
-               'Get tWBTC (faucet)'}
+              {faucetState === 'loading' ? 'Minting — sign the wallet prompt…' :
+               faucetState === 'done'    ? '✓ Minted 0.1 tWBTC — confirming (~10 min)' :
+               faucetState === 'error'   ? '✗ Failed — retry?' :
+               'Mint free tWBTC (testnet faucet)'}
             </button>
+
+            {faucetState === 'done' && (
+              <p className="faucet-confirm-note">
+                Your balance will update automatically once the Bitcoin block confirms (~10 min).
+                If tWBTC doesn't appear in OPWallet, add the token manually:<br />
+                <code style={{ fontSize: '0.7rem', wordBreak: 'break-all' }}>{CONTRACTS.TEST_WBTC}</code>
+              </p>
+            )}
             {faucetState === 'error' && faucetError && (
               <p style={{ color: '#ff6b6b', fontSize: '0.8rem', maxWidth: '400px', textAlign: 'center', margin: 0 }}>
                 {faucetError}
               </p>
             )}
-            {faucetState === 'done' && (
-              <p style={{ color: '#aaa', fontSize: '0.78rem', maxWidth: '420px', textAlign: 'center', margin: 0 }}>
-                Token not showing in OPWallet? Add it manually using the contract address:<br />
-                <code style={{ fontSize: '0.7rem', wordBreak: 'break-all' }}>{CONTRACTS.TEST_WBTC}</code>
-              </p>
-            )}
           </div>
+        )}
+
+        {/* Not connected — explain the flow before they connect */}
+        {!isConnected && (
+          <p className="hero-sub" style={{ marginTop: '1rem', fontSize: '0.85rem', opacity: 0.7 }}>
+            Connect OPWallet → mint free tWBTC → place your first bet
+          </p>
         )}
       </div>
 
