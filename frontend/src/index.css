@@ -978,25 +978,84 @@ input, textarea, select { font-family: inherit; }
   line-height: 1.5;
 }
 
-/* ── Faucet callout (Markets page) ──────────────────── */
-.faucet-callout {
-  padding: 0.75rem 1rem;
-  background: rgba(20, 184, 166, 0.08);
-  border: 1px solid rgba(20, 184, 166, 0.3);
-  border-radius: 10px;
-  font-size: 0.875rem;
-  color: var(--color-text);
+/* ── Faucet section (Markets page) ──────────────────── */
+.faucet-section {
+  max-width: 620px;
+  margin: 0 auto 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+.faucet-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
   text-align: center;
-  line-height: 1.5;
+  margin: 0;
+}
+/* Zero-balance prominent card */
+.faucet-banner {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(20, 184, 166, 0.07);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  border-radius: 12px;
+}
+.faucet-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.faucet-banner-content strong {
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+.faucet-banner-content span {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+.faucet-banner-btn { white-space: nowrap; flex-shrink: 0; }
+/* Compact status row */
+.faucet-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 99px;
+}
+.faucet-balance-chip {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+.btn-sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
 }
 .faucet-confirm-note {
   font-size: 0.78rem;
   color: var(--color-text-muted);
   text-align: center;
-  max-width: 420px;
+  max-width: 480px;
   line-height: 1.5;
   margin: 0;
+}
+.faucet-error-note {
+  font-size: 0.8rem;
+  color: #ff6b6b;
+  text-align: center;
+  max-width: 400px;
+  margin: 0;
+}
+@media (max-width: 520px) {
+  .faucet-banner { flex-direction: column; align-items: flex-start; }
+  .faucet-banner-btn { width: 100%; }
 }
 
 /* ── Token required strip (MarketDetail) ─────────────── */
