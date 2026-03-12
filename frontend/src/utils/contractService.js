@@ -208,8 +208,22 @@ export async function stakePosition(senderAddress, marketId, side, amountSats) {
         [BigInt(marketId), side, BigInt(amountSats)], senderAddress);
 }
 
+export async function getResolutionVotes(marketId) {
+    const p = await read(PM(), PM_ABI, 'getResolutionVotes', [BigInt(marketId)]);
+    if (!p) return { resolverVote: 0n, platformVote: 0n };
+    return {
+        resolverVote: p.resolverVote ?? 0n,
+        platformVote: p.platformVote ?? 0n,
+    };
+}
+
 export async function resolveMarket(senderAddress, marketId, outcome) {
     return execute(PM(), PM_ABI, 'resolve', [BigInt(marketId), BigInt(outcome)], senderAddress);
+}
+
+export async function setPlatformResolver(senderAddress, resolverAddress) {
+    const resolverAddr = await resolveAddr(resolverAddress);
+    return execute(PM(), PM_ABI, 'setPlatformResolver', [resolverAddr], senderAddress);
 }
 
 export async function cancelMarket(senderAddress, marketId) {

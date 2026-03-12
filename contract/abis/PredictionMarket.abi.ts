@@ -61,6 +61,27 @@ export const PredictionMarketAbi = [
         type: BitcoinAbiTypes.Function,
     },
     {
+        name: 'setPlatformResolver',
+        inputs: [{ name: 'resolver', type: ABIDataTypes.ADDRESS }],
+        outputs: [{ name: 'success', type: ABIDataTypes.UINT256 }],
+        type: BitcoinAbiTypes.Function,
+    },
+    {
+        name: 'getPlatformResolver',
+        inputs: [],
+        outputs: [{ name: 'resolver', type: ABIDataTypes.UINT256 }],
+        type: BitcoinAbiTypes.Function,
+    },
+    {
+        name: 'getResolutionVotes',
+        inputs: [{ name: 'marketId', type: ABIDataTypes.UINT256 }],
+        outputs: [
+            { name: 'resolverVote', type: ABIDataTypes.UINT256 },
+            { name: 'platformVote', type: ABIDataTypes.UINT256 },
+        ],
+        type: BitcoinAbiTypes.Function,
+    },
+    {
         name: 'getMarket',
         inputs: [{ name: 'marketId', type: ABIDataTypes.UINT256 }],
         outputs: [

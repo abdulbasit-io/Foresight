@@ -967,6 +967,117 @@ input, textarea, select { font-family: inherit; }
 .approval-check-count { color: #ffc850; font-weight: 600; }
 .approval-next-check { color: var(--color-text-muted); }
 
+.bet-confirmed-note {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(20, 184, 166, 0.08);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  border-radius: 8px;
+  font-size: 0.83rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* ── Resolution vote status ─────────────────────────── */
+.vote-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.vote-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+}
+.vote-label { color: var(--color-text-muted); }
+.vote-you-badge {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.vote-badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.vote-none    { background: rgba(86,94,103,0.15); color: #565E67; }
+.vote-yes     { background: rgba(129,255,211,0.12); color: #81FFD3; }
+.vote-no      { background: rgba(255,107,107,0.12); color: #FF6B6B; }
+.vote-disagree-note {
+  font-size: 0.82rem;
+  color: #f59e0b;
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.vote-agree-note {
+  font-size: 0.82rem;
+  color: #81FFD3;
+  background: rgba(129,255,211,0.08);
+  border: 1px solid rgba(129,255,211,0.2);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Result badges (Portfolio + MarketDetail) ────────── */
+.result-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.result-won          { background: rgba(129,255,211,0.12); color: #81FFD3; }
+.result-lost         { background: rgba(255,107,107,0.12); color: #FF6B6B; }
+.result-claimed      { background: rgba(86,94,103,0.15);   color: #565E67; }
+.result-refunded     { background: rgba(86,94,103,0.15);   color: #565E67; }
+.result-refund-avail { background: rgba(245,158,11,0.12);  color: #f59e0b; }
+.result-open         { background: rgba(129,255,211,0.06); color: #81FFD3; }
+
+/* ── Portfolio won card highlight ───────────────────── */
+.portfolio-card-won {
+  border-color: rgba(129,255,211,0.25) !important;
+  box-shadow: 0 0 0 1px rgba(129,255,211,0.1);
+}
+
+/* ── P&L summary bar ────────────────────────────────── */
+.pnl-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem auto 2rem;
+  max-width: 600px;
+}
+.pnl-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1;
+}
+.pnl-label { font-size: 0.78rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pnl-value { font-size: 1rem; font-weight: 700; }
+.pnl-divider {
+  width: 1px;
+  height: 2rem;
+  background: var(--color-border);
+  margin: 0 1rem;
+}
+
 /* Spinner for pending approval */
 .approval-spinner {
   display: inline-block;

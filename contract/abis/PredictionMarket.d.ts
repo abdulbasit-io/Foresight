@@ -80,6 +80,37 @@ export type WithdrawFees = CallResult<
 >;
 
 /**
+ * @description Represents the result of the setPlatformResolver function call.
+ */
+export type SetPlatformResolver = CallResult<
+    {
+        success: bigint;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the getPlatformResolver function call.
+ */
+export type GetPlatformResolver = CallResult<
+    {
+        resolver: bigint;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the getResolutionVotes function call.
+ */
+export type GetResolutionVotes = CallResult<
+    {
+        resolverVote: bigint;
+        platformVote: bigint;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
  * @description Represents the result of the getMarket function call.
  */
 export type GetMarket = CallResult<
@@ -153,6 +184,9 @@ export interface IPredictionMarket extends IOP_NETContract {
     claim(marketId: bigint): Promise<Claim>;
     refund(marketId: bigint): Promise<Refund>;
     withdrawFees(token: Address): Promise<WithdrawFees>;
+    setPlatformResolver(resolver: Address): Promise<SetPlatformResolver>;
+    getPlatformResolver(): Promise<GetPlatformResolver>;
+    getResolutionVotes(marketId: bigint): Promise<GetResolutionVotes>;
     getMarket(marketId: bigint): Promise<GetMarket>;
     getPosition(marketId: bigint, user: Address): Promise<GetPosition>;
     getOdds(marketId: bigint): Promise<GetOdds>;

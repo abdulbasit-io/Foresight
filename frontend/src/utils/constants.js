@@ -37,6 +37,8 @@ export const DEFAULT_RESOLUTION_DELTA = 144; // 1 day after end
 export const CONTRACTS = {
   PREDICTION_MARKET: import.meta.env.VITE_PREDICTION_MARKET_CONTRACT || '',
   TEST_WBTC: import.meta.env.VITE_TEST_WBTC_CONTRACT || '',
+  // Your wallet address — used to identify you as the platform resolver in the UI
+  PLATFORM_RESOLVER: import.meta.env.VITE_PLATFORM_RESOLVER || '',
 };
 
 export const LINKS = {

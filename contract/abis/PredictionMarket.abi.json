@@ -163,6 +163,59 @@
             ]
         },
         {
+            "name": "setPlatformResolver",
+            "type": "function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "resolver",
+                    "type": "ADDRESS"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "success",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getPlatformResolver",
+            "type": "function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "resolver",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
+            "name": "getResolutionVotes",
+            "type": "function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "marketId",
+                    "type": "UINT256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "resolverVote",
+                    "type": "UINT256"
+                },
+                {
+                    "name": "platformVote",
+                    "type": "UINT256"
+                }
+            ]
+        },
+        {
             "name": "getMarket",
             "type": "function",
             "payable": false,

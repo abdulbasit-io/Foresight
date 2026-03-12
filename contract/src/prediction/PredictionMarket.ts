@@ -19,51 +19,56 @@ import { EMPTY_POINTER } from '@btc-vision/btc-runtime/runtime/math/bytes';
 // PredictionMarket — Binary Parimutuel on Bitcoin L1 (OPNet)
 // ═══════════════════════════════════════════════════════════
 //
-// Users stake wBTC (OP20) on YES or NO outcomes.
-// A trusted resolver calls resolve() after endBlock.
-// Winners claim a proportional share of the loser pool.
-// If resolver misses the deadline, anyone can cancel and
-// all stakers are fully refunded.
+// Dual-resolver system: the market resolver (designated by the
+// creator) AND the platform resolver must both vote the same
+// outcome before the market finalises. Either party can change
+// their vote until the other agrees. If the platform resolver
+// is not set, the market resolver's single vote finalises.
+//
+// If neither resolver calls resolve() before resolutionDeadline,
+// anyone can cancel the market and all stakers are fully refunded.
 // ═══════════════════════════════════════════════════════════
 
-// ── Global Storage Pointers (auto-assigned, starts at 1) ──
-const marketCountPointer: u16 = Blockchain.nextPointer; // 1
-const ownerPointer: u16 = Blockchain.nextPointer;       // 2
-const feeBpsPointer: u16 = Blockchain.nextPointer;      // 3
-const feeRecipientPointer: u16 = Blockchain.nextPointer;// 4
-const accFeesPointer: u16 = Blockchain.nextPointer;     // 5 StoredMapU256
-const yesStakesPointer: u16 = Blockchain.nextPointer;   // 6 StoredMapU256
-const noStakesPointer: u16 = Blockchain.nextPointer;    // 7 StoredMapU256
-const claimedPointer: u16 = Blockchain.nextPointer;     // 8 StoredMapU256
-const questionPointer: u16 = Blockchain.nextPointer;    // 9 StoredString (indexed)
-const descPointer: u16 = Blockchain.nextPointer;        // 10 StoredString (indexed)
+// ── Global Storage Pointers ─────────────────────────────────
+const marketCountPointer: u16 = Blockchain.nextPointer;      // 1
+const ownerPointer: u16 = Blockchain.nextPointer;            // 2
+const feeBpsPointer: u16 = Blockchain.nextPointer;           // 3
+const feeRecipientPointer: u16 = Blockchain.nextPointer;     // 4
+const accFeesPointer: u16 = Blockchain.nextPointer;          // 5 StoredMapU256
+const yesStakesPointer: u16 = Blockchain.nextPointer;        // 6 StoredMapU256
+const noStakesPointer: u16 = Blockchain.nextPointer;         // 7 StoredMapU256
+const claimedPointer: u16 = Blockchain.nextPointer;          // 8 StoredMapU256
+const questionPointer: u16 = Blockchain.nextPointer;         // 9 StoredString (indexed)
+const descPointer: u16 = Blockchain.nextPointer;             // 10 StoredString (indexed)
+const platformResolverPointer: u16 = Blockchain.nextPointer; // 11
 
-// ── Per-Market Storage (pointer-offset, base 50) ──────────
-// Market N uses pointers: 50 + N*12 to 50 + N*12 + 11
-// Max markets: (65535 - 50) / 12 = 5457 markets
+// ── Per-Market Storage (base 50, 14 slots each) ─────────────
+// Max markets: (65535 - 50) / 14 = 4676
 const MARKET_BASE_POINTER: u16 = 50;
-const MARKET_SLOTS: u64 = 12;
+const MARKET_SLOTS: u64 = 14;
 
-// Field offsets within each market's slot block
-const F_RESOLVER: u16 = 0;       // u256 (address as u256)
-const F_PAYMENT_TOKEN: u16 = 1;  // u256 (address as u256)
-const F_END_BLOCK: u16 = 2;      // u64 stored as u256
-const F_RES_DEADLINE: u16 = 3;   // u64 stored as u256
+const F_RESOLVER: u16 = 0;       // u256 (address hash)
+const F_PAYMENT_TOKEN: u16 = 1;  // u256 (address hash)
+const F_END_BLOCK: u16 = 2;      // u64 as u256
+const F_RES_DEADLINE: u16 = 3;   // u64 as u256
 const F_YES_POOL: u16 = 4;       // u256
 const F_NO_POOL: u16 = 5;        // u256
-const F_OUTCOME: u16 = 6;        // 0=OPEN, 1=YES, 2=NO, 3=CANCELLED
-const F_FEE_BPS: u16 = 7;        // u16 stored as u256
-const F_CREATOR: u16 = 8;        // u256 (address as u256)
-const F_CREATED_AT: u16 = 9;     // u64 stored as u256
-const F_FEE_AMOUNT: u16 = 10;    // u256 — fee earmarked at resolve time
+const F_OUTCOME: u16 = 6;        // 0=OPEN 1=YES 2=NO 3=CANCELLED
+const F_FEE_BPS: u16 = 7;        // u16 as u256
+const F_CREATOR: u16 = 8;        // u256 (address hash)
+const F_CREATED_AT: u16 = 9;     // u64 as u256
+const F_FEE_AMOUNT: u16 = 10;    // u256 — earmarked at resolve time
+const F_RESOLVER_VOTE: u16 = 11; // 0=none 1=YES 2=NO (market resolver's vote)
+const F_PLATFORM_VOTE: u16 = 12; // 0=none 1=YES 2=NO (platform resolver's vote)
+// slot 13 reserved
 
-// ── Outcome Constants ──────────────────────────────────────
+// ── Outcome Constants ───────────────────────────────────────
 const OUTCOME_OPEN: u256 = u256.Zero;
 const OUTCOME_YES: u256 = u256.One;
 const OUTCOME_NO: u256 = u256.fromU64(2);
 const OUTCOME_CANCELLED: u256 = u256.fromU64(3);
 
-// ── Platform Constants ─────────────────────────────────────
+// ── Platform Constants ──────────────────────────────────────
 const DEFAULT_FEE_BPS: u256 = u256.fromU64(200); // 2%
 const BASIS_POINTS: u256 = u256.fromU64(10000);
 const SIDE_YES: u256 = u256.One;
@@ -75,6 +80,7 @@ export class PredictionMarket extends OP_NET {
     private readonly owner: StoredU256;
     private readonly feeBps: StoredU256;
     private readonly feeRecipient: StoredU256;
+    private readonly platformResolver: StoredU256;
     private readonly accFees: StoredMapU256;
     private readonly yesStakes: StoredMapU256;
     private readonly noStakes: StoredMapU256;
@@ -82,15 +88,15 @@ export class PredictionMarket extends OP_NET {
 
     public constructor() {
         super();
-
-        this.marketCount = new StoredU256(marketCountPointer, EMPTY_POINTER);
-        this.owner = new StoredU256(ownerPointer, EMPTY_POINTER);
-        this.feeBps = new StoredU256(feeBpsPointer, EMPTY_POINTER);
-        this.feeRecipient = new StoredU256(feeRecipientPointer, EMPTY_POINTER);
-        this.accFees = new StoredMapU256(accFeesPointer);
-        this.yesStakes = new StoredMapU256(yesStakesPointer);
-        this.noStakes = new StoredMapU256(noStakesPointer);
-        this.claimed = new StoredMapU256(claimedPointer);
+        this.marketCount   = new StoredU256(marketCountPointer, EMPTY_POINTER);
+        this.owner         = new StoredU256(ownerPointer, EMPTY_POINTER);
+        this.feeBps        = new StoredU256(feeBpsPointer, EMPTY_POINTER);
+        this.feeRecipient  = new StoredU256(feeRecipientPointer, EMPTY_POINTER);
+        this.platformResolver = new StoredU256(platformResolverPointer, EMPTY_POINTER);
+        this.accFees       = new StoredMapU256(accFeesPointer);
+        this.yesStakes     = new StoredMapU256(yesStakesPointer);
+        this.noStakes      = new StoredMapU256(noStakesPointer);
+        this.claimed       = new StoredMapU256(claimedPointer);
     }
 
     // ─── Deployment ────────────────────────────────────────
@@ -99,12 +105,12 @@ export class PredictionMarket extends OP_NET {
         this.owner.set(deployer);
         this.feeRecipient.set(deployer);
         this.feeBps.set(DEFAULT_FEE_BPS);
+        this.platformResolver.set(deployer); // deployer is initial platform resolver
     }
 
     public override onUpdate(_calldata: Calldata): void {}
 
     // ─── Address Helpers ───────────────────────────────────
-    // Reverse of u256.fromUint8ArrayBE: recover 32-byte address from stored u256
     private u256ToAddr(v: u256): Address {
         const buf = new Uint8Array(32);
         buf[0]  = u8(v.hi2 >> 56); buf[1]  = u8(v.hi2 >> 48); buf[2]  = u8(v.hi2 >> 40); buf[3]  = u8(v.hi2 >> 32);
@@ -134,7 +140,6 @@ export class PredictionMarket extends OP_NET {
     }
 
     // ─── Composite Key for Per-User Stakes ────────────────
-    // keccak256(marketId as 8 bytes || userAddress as 32 bytes) → u256 key
     private stakeKey(marketId: u64, user: Address): u256 {
         const buf = new BytesWriter(40);
         buf.writeU64(marketId);
@@ -154,12 +159,12 @@ export class PredictionMarket extends OP_NET {
     )
     @returns({ name: 'marketId', type: ABIDataTypes.UINT256 })
     public createMarket(calldata: Calldata): BytesWriter {
-        const question = calldata.readStringWithLength();
-        const description = calldata.readStringWithLength();
-        const resolver = u256.fromUint8ArrayBE(calldata.readAddress());
-        const paymentToken = u256.fromUint8ArrayBE(calldata.readAddress());
-        const endBlock = calldata.readU256();
-        const resDelta = calldata.readU256();
+        const question      = calldata.readStringWithLength();
+        const description   = calldata.readStringWithLength();
+        const resolver      = u256.fromUint8ArrayBE(calldata.readAddress());
+        const paymentToken  = u256.fromUint8ArrayBE(calldata.readAddress());
+        const endBlock      = calldata.readU256();
+        const resDelta      = calldata.readU256();
         const feeBpsOverride = calldata.readU256();
 
         if (question.length === 0) throw new Revert('Question required');
@@ -174,22 +179,23 @@ export class PredictionMarket extends OP_NET {
         this.marketCount.set(SafeMath.add(this.marketCount.value, u256.One));
 
         const resDeadline = SafeMath.add(endBlock, resDelta);
-        const creator = u256.fromUint8ArrayBE(Blockchain.tx.sender);
-        const feeToUse = feeBpsOverride.isZero() ? this.feeBps.value : feeBpsOverride;
+        const creator     = u256.fromUint8ArrayBE(Blockchain.tx.sender);
+        const feeToUse    = feeBpsOverride.isZero() ? this.feeBps.value : feeBpsOverride;
 
-        this.setField(marketId, F_RESOLVER, resolver);
-        this.setField(marketId, F_PAYMENT_TOKEN, paymentToken);
-        this.setField(marketId, F_END_BLOCK, endBlock);
-        this.setField(marketId, F_RES_DEADLINE, resDeadline);
-        this.setField(marketId, F_YES_POOL, u256.Zero);
-        this.setField(marketId, F_NO_POOL, u256.Zero);
-        this.setField(marketId, F_OUTCOME, OUTCOME_OPEN);
-        this.setField(marketId, F_FEE_BPS, feeToUse);
-        this.setField(marketId, F_CREATOR, creator);
-        this.setField(marketId, F_CREATED_AT, currentBlock);
-        this.setField(marketId, F_FEE_AMOUNT, u256.Zero);
+        this.setField(marketId, F_RESOLVER,       resolver);
+        this.setField(marketId, F_PAYMENT_TOKEN,  paymentToken);
+        this.setField(marketId, F_END_BLOCK,      endBlock);
+        this.setField(marketId, F_RES_DEADLINE,   resDeadline);
+        this.setField(marketId, F_YES_POOL,       u256.Zero);
+        this.setField(marketId, F_NO_POOL,        u256.Zero);
+        this.setField(marketId, F_OUTCOME,        OUTCOME_OPEN);
+        this.setField(marketId, F_FEE_BPS,        feeToUse);
+        this.setField(marketId, F_CREATOR,        creator);
+        this.setField(marketId, F_CREATED_AT,     currentBlock);
+        this.setField(marketId, F_FEE_AMOUNT,     u256.Zero);
+        this.setField(marketId, F_RESOLVER_VOTE,  u256.Zero);
+        this.setField(marketId, F_PLATFORM_VOTE,  u256.Zero);
 
-        // Store strings (indexed by marketId — each market gets its own slots)
         const qStore = new StoredString(questionPointer, marketId);
         qStore.value = question;
         const dStore = new StoredString(descPointer, marketId);
@@ -203,22 +209,22 @@ export class PredictionMarket extends OP_NET {
     // ─── stake ─────────────────────────────────────────────
     @method(
         { name: 'marketId', type: ABIDataTypes.UINT256 },
-        { name: 'side', type: ABIDataTypes.UINT256 },   // 1 = YES, 2 = NO
+        { name: 'side', type: ABIDataTypes.UINT256 },
         { name: 'amount', type: ABIDataTypes.UINT256 },
     )
     @returns({ name: 'success', type: ABIDataTypes.UINT256 })
     public stake(calldata: Calldata): BytesWriter {
         const marketIdU256 = calldata.readU256();
-        const side = calldata.readU256();
-        const amount = calldata.readU256();
+        const side         = calldata.readU256();
+        const amount       = calldata.readU256();
 
         if (amount.isZero()) throw new Revert('Amount must be > 0');
 
         const marketId = marketIdU256.toU64();
-        const outcome = this.getField(marketId, F_OUTCOME);
+        const outcome  = this.getField(marketId, F_OUTCOME);
         if (!u256.eq(outcome, OUTCOME_OPEN)) throw new Revert('Market not open');
 
-        const endBlock = this.getField(marketId, F_END_BLOCK);
+        const endBlock     = this.getField(marketId, F_END_BLOCK);
         const currentBlock = u256.fromU64(Blockchain.block.number);
         if (u256.ge(currentBlock, endBlock)) throw new Revert('Staking period ended');
 
@@ -227,20 +233,15 @@ export class PredictionMarket extends OP_NET {
         }
 
         const tokenAddr = this.u256ToAddr(this.getField(marketId, F_PAYMENT_TOKEN));
-        const caller = Blockchain.tx.sender;
-
-        // Pull tokens from user into contract escrow (requires prior approval)
+        const caller    = Blockchain.tx.sender;
         TransferHelper.transferFrom(tokenAddr, caller, Blockchain.contractAddress, amount);
 
         const key = this.stakeKey(marketId, caller);
-
         if (u256.eq(side, SIDE_YES)) {
-            const cur = this.yesStakes.get(key);
-            this.yesStakes.set(key, SafeMath.add(cur, amount));
+            this.yesStakes.set(key, SafeMath.add(this.yesStakes.get(key), amount));
             this.setField(marketId, F_YES_POOL, SafeMath.add(this.getField(marketId, F_YES_POOL), amount));
         } else {
-            const cur = this.noStakes.get(key);
-            this.noStakes.set(key, SafeMath.add(cur, amount));
+            this.noStakes.set(key, SafeMath.add(this.noStakes.get(key), amount));
             this.setField(marketId, F_NO_POOL, SafeMath.add(this.getField(marketId, F_NO_POOL), amount));
         }
 
@@ -250,6 +251,9 @@ export class PredictionMarket extends OP_NET {
     }
 
     // ─── resolve ───────────────────────────────────────────
+    // Either the market resolver OR platform resolver submits a vote.
+    // The market finalises once both votes are set and agree.
+    // If platformResolver is not set (zero), market resolver alone finalises.
     @method(
         { name: 'marketId', type: ABIDataTypes.UINT256 },
         { name: 'outcome', type: ABIDataTypes.UINT256 }, // 1 = YES, 2 = NO
@@ -257,20 +261,13 @@ export class PredictionMarket extends OP_NET {
     @returns({ name: 'success', type: ABIDataTypes.UINT256 })
     public resolve(calldata: Calldata): BytesWriter {
         const marketIdU256 = calldata.readU256();
-        const newOutcome = calldata.readU256();
-        const marketId = marketIdU256.toU64();
+        const newOutcome   = calldata.readU256();
+        const marketId     = marketIdU256.toU64();
 
-        // Only resolver can resolve
-        const resolverHash = this.getField(marketId, F_RESOLVER);
-        const callerHash = u256.fromUint8ArrayBE(Blockchain.tx.sender);
-        if (!u256.eq(callerHash, resolverHash)) throw new Revert('Not resolver');
-
-        // Market must be OPEN
         const currentOutcome = this.getField(marketId, F_OUTCOME);
         if (!u256.eq(currentOutcome, OUTCOME_OPEN)) throw new Revert('Market not open');
 
-        // Can only resolve after endBlock
-        const endBlock = this.getField(marketId, F_END_BLOCK);
+        const endBlock     = this.getField(marketId, F_END_BLOCK);
         const currentBlock = u256.fromU64(Blockchain.block.number);
         if (u256.lt(currentBlock, endBlock)) throw new Revert('Staking period not ended');
 
@@ -278,26 +275,52 @@ export class PredictionMarket extends OP_NET {
             throw new Revert('Outcome must be 1 (YES) or 2 (NO)');
         }
 
-        this.setField(marketId, F_OUTCOME, newOutcome);
+        const callerHash   = u256.fromUint8ArrayBE(Blockchain.tx.sender);
+        const resolverHash = this.getField(marketId, F_RESOLVER);
+        const platformHash = this.platformResolver.value;
 
-        // Pre-compute and earmark platform fee from total pool
-        const yesPool = this.getField(marketId, F_YES_POOL);
-        const noPool = this.getField(marketId, F_NO_POOL);
-        const totalPool = SafeMath.add(yesPool, noPool);
-        const feeBps = this.getField(marketId, F_FEE_BPS);
-        const fee = SafeMath.div(SafeMath.mul(totalPool, feeBps), BASIS_POINTS);
-        this.setField(marketId, F_FEE_AMOUNT, fee);
+        const isMarketResolver   = u256.eq(callerHash, resolverHash);
+        const isPlatformResolver = !platformHash.isZero() && u256.eq(callerHash, platformHash);
 
-        // Accumulate fee per payment token for withdrawFees()
-        if (!fee.isZero()) {
-            const tokenKey = this.getField(marketId, F_PAYMENT_TOKEN);
-            const accumulated = this.accFees.get(tokenKey);
-            this.accFees.set(tokenKey, SafeMath.add(accumulated, fee));
+        if (!isMarketResolver && !isPlatformResolver) throw new Revert('Not a resolver');
+
+        // Record vote(s) — caller may be both resolver and platform in single-operator mode
+        if (isMarketResolver)   this.setField(marketId, F_RESOLVER_VOTE, newOutcome);
+        if (isPlatformResolver) this.setField(marketId, F_PLATFORM_VOTE, newOutcome);
+
+        // Finalise if both agree, or if platform is not configured (single-resolver fallback)
+        const resolverVote = this.getField(marketId, F_RESOLVER_VOTE);
+        const platformVote = this.getField(marketId, F_PLATFORM_VOTE);
+        const platformSet  = !platformHash.isZero();
+
+        const bothAgree  = !resolverVote.isZero() && !platformVote.isZero()
+                           && u256.eq(resolverVote, platformVote);
+        const singleMode = !platformSet && !resolverVote.isZero();
+
+        if (bothAgree || singleMode) {
+            this._finalizeResolution(marketId, newOutcome);
         }
 
         const writer = new BytesWriter(32);
         writer.writeU256(u256.One);
         return writer;
+    }
+
+    private _finalizeResolution(marketId: u64, outcome: u256): void {
+        this.setField(marketId, F_OUTCOME, outcome);
+
+        const yesPool  = this.getField(marketId, F_YES_POOL);
+        const noPool   = this.getField(marketId, F_NO_POOL);
+        const total    = SafeMath.add(yesPool, noPool);
+        const feeBps   = this.getField(marketId, F_FEE_BPS);
+        const fee      = SafeMath.div(SafeMath.mul(total, feeBps), BASIS_POINTS);
+        this.setField(marketId, F_FEE_AMOUNT, fee);
+
+        if (!fee.isZero()) {
+            const tokenKey    = this.getField(marketId, F_PAYMENT_TOKEN);
+            const accumulated = this.accFees.get(tokenKey);
+            this.accFees.set(tokenKey, SafeMath.add(accumulated, fee));
+        }
     }
 
     // ─── cancel ────────────────────────────────────────────
@@ -309,13 +332,16 @@ export class PredictionMarket extends OP_NET {
         const outcome = this.getField(marketId, F_OUTCOME);
         if (!u256.eq(outcome, OUTCOME_OPEN)) throw new Revert('Market not open');
 
-        const callerHash = u256.fromUint8ArrayBE(Blockchain.tx.sender);
+        const callerHash   = u256.fromUint8ArrayBE(Blockchain.tx.sender);
         const resolverHash = this.getField(marketId, F_RESOLVER);
-        const isResolver = u256.eq(callerHash, resolverHash);
+        const platformHash = this.platformResolver.value;
 
-        if (!isResolver) {
-            // Non-resolver can cancel only after resolution deadline has passed
-            const resDeadline = this.getField(marketId, F_RES_DEADLINE);
+        const isMarketResolver   = u256.eq(callerHash, resolverHash);
+        const isPlatformResolver = !platformHash.isZero() && u256.eq(callerHash, platformHash);
+
+        if (!isMarketResolver && !isPlatformResolver) {
+            // Anyone else can cancel only after the resolution deadline
+            const resDeadline  = this.getField(marketId, F_RES_DEADLINE);
             const currentBlock = u256.fromU64(Blockchain.block.number);
             if (u256.le(currentBlock, resDeadline)) throw new Revert('Deadline not passed');
         }
@@ -332,10 +358,9 @@ export class PredictionMarket extends OP_NET {
     @returns({ name: 'amount', type: ABIDataTypes.UINT256 })
     public claim(calldata: Calldata): BytesWriter {
         const marketId = calldata.readU256().toU64();
-        const outcome = this.getField(marketId, F_OUTCOME);
-
-        const caller = Blockchain.tx.sender;
-        const key = this.stakeKey(marketId, caller);
+        const outcome  = this.getField(marketId, F_OUTCOME);
+        const caller   = Blockchain.tx.sender;
+        const key      = this.stakeKey(marketId, caller);
 
         if (!this.claimed.get(key).isZero()) throw new Revert('Already claimed');
 
@@ -343,10 +368,10 @@ export class PredictionMarket extends OP_NET {
         let winningPool: u256;
 
         if (u256.eq(outcome, OUTCOME_YES)) {
-            userStake = this.yesStakes.get(key);
+            userStake   = this.yesStakes.get(key);
             winningPool = this.getField(marketId, F_YES_POOL);
         } else if (u256.eq(outcome, OUTCOME_NO)) {
-            userStake = this.noStakes.get(key);
+            userStake   = this.noStakes.get(key);
             winningPool = this.getField(marketId, F_NO_POOL);
         } else {
             throw new Revert('Market not resolved');
@@ -355,11 +380,11 @@ export class PredictionMarket extends OP_NET {
         if (userStake.isZero()) throw new Revert('No winning stake');
         if (winningPool.isZero()) throw new Revert('Invalid winning pool');
 
-        const yesPool = this.getField(marketId, F_YES_POOL);
-        const noPool = this.getField(marketId, F_NO_POOL);
-        const totalPool = SafeMath.add(yesPool, noPool);
-        const fee = this.getField(marketId, F_FEE_AMOUNT);
-        const netPool = SafeMath.sub(totalPool, fee);
+        const yesPool  = this.getField(marketId, F_YES_POOL);
+        const noPool   = this.getField(marketId, F_NO_POOL);
+        const total    = SafeMath.add(yesPool, noPool);
+        const fee      = this.getField(marketId, F_FEE_AMOUNT);
+        const netPool  = SafeMath.sub(total, fee);
 
         // payout = userStake * netPool / winningPool
         const payout = SafeMath.div(SafeMath.mul(userStake, netPool), winningPool);
@@ -384,14 +409,13 @@ export class PredictionMarket extends OP_NET {
         if (!u256.eq(outcome, OUTCOME_CANCELLED)) throw new Revert('Market not cancelled');
 
         const caller = Blockchain.tx.sender;
-        const key = this.stakeKey(marketId, caller);
+        const key    = this.stakeKey(marketId, caller);
 
         if (!this.claimed.get(key).isZero()) throw new Revert('Already refunded');
 
         const yesStake = this.yesStakes.get(key);
-        const noStake = this.noStakes.get(key);
-        const total = SafeMath.add(yesStake, noStake);
-
+        const noStake  = this.noStakes.get(key);
+        const total    = SafeMath.add(yesStake, noStake);
         if (total.isZero()) throw new Revert('No stake to refund');
 
         this.claimed.set(key, u256.One);
@@ -408,10 +432,9 @@ export class PredictionMarket extends OP_NET {
     @method({ name: 'token', type: ABIDataTypes.ADDRESS })
     @returns({ name: 'amount', type: ABIDataTypes.UINT256 })
     public withdrawFees(calldata: Calldata): BytesWriter {
-        const tokenKey = u256.fromUint8ArrayBE(calldata.readAddress());
-
-        const callerHash = u256.fromUint8ArrayBE(Blockchain.tx.sender);
-        const ownerHash = this.owner.value;
+        const tokenKey    = u256.fromUint8ArrayBE(calldata.readAddress());
+        const callerHash  = u256.fromUint8ArrayBE(Blockchain.tx.sender);
+        const ownerHash   = this.owner.value;
         const recipientHash = this.feeRecipient.value;
 
         if (!u256.eq(callerHash, ownerHash) && !u256.eq(callerHash, recipientHash)) {
@@ -429,6 +452,44 @@ export class PredictionMarket extends OP_NET {
 
         const writer = new BytesWriter(32);
         writer.writeU256(amount);
+        return writer;
+    }
+
+    // ─── setPlatformResolver (owner only) ──────────────────
+    @method({ name: 'resolver', type: ABIDataTypes.ADDRESS })
+    @returns({ name: 'success', type: ABIDataTypes.UINT256 })
+    public setPlatformResolver(calldata: Calldata): BytesWriter {
+        const callerHash = u256.fromUint8ArrayBE(Blockchain.tx.sender);
+        if (!u256.eq(callerHash, this.owner.value)) throw new Revert('Not owner');
+
+        const resolver = u256.fromUint8ArrayBE(calldata.readAddress());
+        this.platformResolver.set(resolver);
+
+        const writer = new BytesWriter(32);
+        writer.writeU256(u256.One);
+        return writer;
+    }
+
+    // ─── getPlatformResolver ───────────────────────────────
+    @method()
+    @returns({ name: 'resolver', type: ABIDataTypes.UINT256 })
+    public getPlatformResolver(_: Calldata): BytesWriter {
+        const writer = new BytesWriter(32);
+        writer.writeU256(this.platformResolver.value);
+        return writer;
+    }
+
+    // ─── getResolutionVotes ────────────────────────────────
+    @method({ name: 'marketId', type: ABIDataTypes.UINT256 })
+    @returns(
+        { name: 'resolverVote', type: ABIDataTypes.UINT256 },
+        { name: 'platformVote', type: ABIDataTypes.UINT256 },
+    )
+    public getResolutionVotes(calldata: Calldata): BytesWriter {
+        const marketId = calldata.readU256().toU64();
+        const writer   = new BytesWriter(64);
+        writer.writeU256(this.getField(marketId, F_RESOLVER_VOTE));
+        writer.writeU256(this.getField(marketId, F_PLATFORM_VOTE));
         return writer;
     }
 
@@ -482,8 +543,8 @@ export class PredictionMarket extends OP_NET {
     )
     public getPosition(calldata: Calldata): BytesWriter {
         const marketId = calldata.readU256().toU64();
-        const user = calldata.readAddress();
-        const key = this.stakeKey(marketId, user);
+        const user     = calldata.readAddress();
+        const key      = this.stakeKey(marketId, user);
 
         const writer = new BytesWriter(96);
         writer.writeU256(this.yesStakes.get(key));
@@ -497,13 +558,13 @@ export class PredictionMarket extends OP_NET {
     @returns(
         { name: 'yesPool', type: ABIDataTypes.UINT256 },
         { name: 'noPool', type: ABIDataTypes.UINT256 },
-        { name: 'yesPercent', type: ABIDataTypes.UINT256 }, // 0–10000 basis points
+        { name: 'yesPercent', type: ABIDataTypes.UINT256 },
     )
     public getOdds(calldata: Calldata): BytesWriter {
         const marketId = calldata.readU256().toU64();
-        const yesPool = this.getField(marketId, F_YES_POOL);
-        const noPool = this.getField(marketId, F_NO_POOL);
-        const total = SafeMath.add(yesPool, noPool);
+        const yesPool  = this.getField(marketId, F_YES_POOL);
+        const noPool   = this.getField(marketId, F_NO_POOL);
+        const total    = SafeMath.add(yesPool, noPool);
 
         let yesPercent: u256 = u256.Zero;
         if (!total.isZero()) {
